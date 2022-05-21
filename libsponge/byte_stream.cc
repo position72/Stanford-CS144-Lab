@@ -58,7 +58,7 @@ std::string ByteStream::read(const size_t len) {
 
 void ByteStream::end_input() { _input_ended = true;}
 
-bool ByteStream::input_ended() const {git return _input_ended; }
+bool ByteStream::input_ended() const { return _input_ended; }
 
 size_t ByteStream::buffer_size() const { return _buffer_size; }
 
