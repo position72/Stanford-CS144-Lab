@@ -3,19 +3,45 @@
 
 #include "byte_stream.hh"
 
+#include <iostream>
 #include <cstdint>
 #include <string>
+#include <set>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
-  private:
+private:
     // Your code here -- add private members as necessary.
 
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
+    size_t _unassembled_bytes = 0;
+    bool _eof = false;
+    size_t _first_unread = 0;
+    size_t _first_unacceptable = 0;
 
-  public:
+    struct SetNode {
+        std::string data;
+        size_t left_point;
+        size_t right_point;
+
+        bool operator<(const SetNode &ano) const {
+            return left_point < ano.left_point;
+        }
+    };
+
+    std::set <SetNode> SegSet{};
+
+    bool check_out_of_bound(const SetNode &node) const; // 检查新接收的数据是否完全在边界外部
+
+    void cut_string(SetNode &node); // 将骑在边界两侧的数据剪切成在边界内
+
+    void push_output(); // 将头部连续的数据写入_output
+
+    bool overlap_insert(SetNode &node); // 插入node并且处理与其他node重叠的情况，若完全被覆盖则返回false
+
+public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,
     //! and those that have not yet been reassembled.
@@ -34,6 +60,7 @@ class StreamReassembler {
     //! \name Access the reassembled byte stream
     //!@{
     const ByteStream &stream_out() const { return _output; }
+
     ByteStream &stream_out() { return _output; }
     //!@}
 
