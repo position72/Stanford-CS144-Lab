@@ -5,7 +5,7 @@
 // For Lab 2, please replace with a real implementation that passes the
 // automated checks run by `make check_lab2`.
 
-template <typename... Targs>
+template<typename... Targs>
 void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
@@ -14,8 +14,7 @@ using namespace std;
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+    return WrappingInt32(static_cast<uint32_t>(n & 0x00000000ffffffff) + isn.raw_value());
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -29,6 +28,17 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+    uint64_t offset = static_cast<uint64_t> (n.raw_value() - isn.raw_value());
+    uint64_t add = 1ul << 32;
+    uint64_t mod = checkpoint >> 32;
+    uint64_t offset_1 = offset + mod * add;
+    uint64_t offset_2 = mod != 0 ? offset + (mod - 1) * add : offset_1;
+    uint64_t offset_3 = offset + (mod + 1) * add;
+    uint64_t abs_1 = offset_1 > checkpoint ? offset_1 - checkpoint : checkpoint - offset_1;
+    uint64_t abs_2 = offset_2 > checkpoint ? offset_2 - checkpoint : checkpoint - offset_2;
+    uint64_t abs_3 = offset_3 > checkpoint ? offset_3 - checkpoint : checkpoint - offset_3;
+    uint64_t min_abs = min(min(abs_1, abs_2), abs_3);
+    if (min_abs == abs_1) return offset_1;
+    if (min_abs == abs_2) return offset_2;
+    return offset_3;
 }

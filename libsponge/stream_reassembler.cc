@@ -12,7 +12,9 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), _capacity(capacity) {}
+StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), _capacity(capacity) {
+    _first_unacceptable = capacity;
+}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
@@ -93,3 +95,7 @@ bool StreamReassembler::overlap_insert(SetNode &node) {
 size_t StreamReassembler::unassembled_bytes() const { return _unassembled_bytes; }
 
 bool StreamReassembler::empty() const { return _unassembled_bytes == 0; }
+
+size_t StreamReassembler::first_unassembled() const { return _first_unread; }
+
+size_t StreamReassembler::first_unacceptable() const { return _first_unacceptable; }
