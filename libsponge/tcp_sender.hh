@@ -16,15 +16,24 @@
 //! maintains the Retransmission Timer, and retransmits in-flight
 //! segments if the retransmission timer expires.
 class TCPSender {
-  private:
+private:
     //! our initial sequence number, the number for our SYN.
     WrappingInt32 _isn;
 
     //! outbound queue of segments that the TCPSender wants sent
-    std::queue<TCPSegment> _segments_out{};
+    std::queue <TCPSegment> _segments_out{};
 
     //! retransmission timer for the connection
     unsigned int _initial_retransmission_timeout;
+
+    // 当前RTO的数值
+    unsigned int _retransmission_timeout;
+
+    // RTO指数退避的判断位
+    bool _back_off_RTO = true;
+
+    // 连续重传次数
+    unsigned int _consecutive_retransmissions = 0;
 
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
@@ -32,15 +41,42 @@ class TCPSender {
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
 
-  public:
+    // 从receiver接收的窗口大小，第一次发送假定为1
+    uint64_t _window_size{1};
+
+    // 是否发送SYN报文段
+    bool _syn_sent = false;
+
+    // 是否发送FIN报文段
+    bool _fin_sent = false;
+
+    // 发送的SYN报文是否被receiver接收
+    bool _syn_acked = false;
+
+    // 已发送但没收到ack的报文段
+    std::queue <TCPSegment> _outstanding_segments_out{};
+
+    // 已发送但未被ack的字节数
+    uint64_t _bytes_in_flight{0};
+
+    // 计时器是否运行
+    bool _timer_running = false;
+
+    // 计时器记录已经过的时间
+    size_t _timer_elapsed = 0;
+
+    void send_segment(TCPSegment &segment);
+
+public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
               const uint16_t retx_timeout = TCPConfig::TIMEOUT_DFLT,
-              const std::optional<WrappingInt32> fixed_isn = {});
+              const std::optional <WrappingInt32> fixed_isn = {});
 
     //! \name "Input" interface for the writer
     //!@{
     ByteStream &stream_in() { return _stream; }
+
     const ByteStream &stream_in() const { return _stream; }
     //!@}
 
@@ -75,7 +111,7 @@ class TCPSender {
     //! \note These must be dequeued and sent by the TCPConnection,
     //! which will need to fill in the fields that are set by the TCPReceiver
     //! (ackno and window size) before sending.
-    std::queue<TCPSegment> &segments_out() { return _segments_out; }
+    std::queue <TCPSegment> &segments_out() { return _segments_out; }
     //!@}
 
     //! \name What is the next sequence number? (used for testing)
