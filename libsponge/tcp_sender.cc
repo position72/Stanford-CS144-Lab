@@ -147,7 +147,6 @@ unsigned int TCPSender::consecutive_retransmissions() const { return _consecutiv
 
 void TCPSender::send_empty_segment() {
     TCPSegment segment;
-    // 空报文段占一位seqno，不进入outstanding队列
-    _next_seqno++;
+    // 空报文不进入outstanding队列
     _segments_out.push(segment);
 }
