@@ -28,17 +28,15 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    uint64_t offset = static_cast<uint64_t> (n.raw_value() - isn.raw_value());
-    uint64_t add = 1ul << 32;
-    uint64_t mod = checkpoint >> 32;
-    uint64_t offset_1 = offset + mod * add;
-    uint64_t offset_2 = mod != 0 ? offset + (mod - 1) * add : offset_1;
-    uint64_t offset_3 = offset + (mod + 1) * add;
-    uint64_t abs_1 = offset_1 > checkpoint ? offset_1 - checkpoint : checkpoint - offset_1;
-    uint64_t abs_2 = offset_2 > checkpoint ? offset_2 - checkpoint : checkpoint - offset_2;
-    uint64_t abs_3 = offset_3 > checkpoint ? offset_3 - checkpoint : checkpoint - offset_3;
-    uint64_t min_abs = min(min(abs_1, abs_2), abs_3);
-    if (min_abs == abs_1) return offset_1;
-    if (min_abs == abs_2) return offset_2;
-    return offset_3;
+    const uint64_t max32 = 1UL << 32;
+    uint64_t offset = n.raw_value() - isn.raw_value();
+    if (checkpoint <= offset) {
+        return offset;
+    }
+    uint64_t quotient = (checkpoint - offset) >> 32;
+    uint64_t remainder = ((checkpoint - offset) << 32) >> 32;
+    if (remainder <= max32 / 2) {
+        return offset + (max32 * quotient);
+    }
+    return offset + (max32 * (quotient + 1));
 }

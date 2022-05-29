@@ -35,7 +35,7 @@ private:
 
     bool check_out_of_bound(const SetNode &node) const; // 检查新接收的数据是否完全在边界外部
 
-    void cut_string(SetNode &node); // 将骑在边界两侧的数据剪切成在边界内
+    void cut_string(SetNode &node) const; // 将骑在边界两侧的数据剪切成在边界内
 
     void push_output(); // 将头部连续的数据写入_output
 
@@ -76,7 +76,6 @@ public:
 
     size_t first_unassembled() const;
 
-    size_t first_unacceptable() const;
 };
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH

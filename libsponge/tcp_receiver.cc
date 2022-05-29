@@ -18,7 +18,11 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         if (!header.syn) return;
         _syn = true;
         _isn = header.seqno;
-        _abs_seqno = 1;
+        // 若SYN报文段带有非空payload，将其分为两段
+        if (seg.payload().size()) {
+            header.syn = false;
+            header.seqno = header.seqno + 1;
+        }
     } else {
         if (header.syn) return;
     }
@@ -29,10 +33,10 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         _fin = true;
     }
 
-    if (!header.syn) _abs_seqno = unwrap(header.seqno, _isn, _abs_seqno);
+    _abs_seqno = unwrap(header.seqno, _isn, _reassembler.first_unassembled());
 
-    // 这里SYN和FIN各占一个编号，payload为空，abs_sqeno=0时是SYN报文段，不进入ByteStream，FIN报文段只起到通知eof的作用
     if (_abs_seqno > 0) _reassembler.push_substring(seg.payload().copy(), _abs_seqno - 1, header.fin);
+    else if (header.fin) _reassembler.push_substring(seg.payload().copy(), 1, header.fin); // SYN和FIN在一个报文段的情况
 
 }
 

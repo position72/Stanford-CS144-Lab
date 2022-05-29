@@ -26,9 +26,13 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     } else {
         _first_unacceptable = _first_unread + _output.remaining_capacity();
         SetNode node = {data, index, index + length - 1};
+
         if (!check_out_of_bound(node)) return;
+
         cut_string(node);
+
         if (!overlap_insert(node)) return;
+
         // 只有eof=1并且data的最后一个字符进入StreamReassembler，才能认为StreamReassembler接收到eof数据
         if (node.right_point == index + length - 1) _eof |= eof;
         node.data = node.data.substr(node.left_point - index, node.right_point - node.left_point + 1);
@@ -44,7 +48,7 @@ bool StreamReassembler::check_out_of_bound(const SetNode &node) const {
     return true;
 }
 
-void StreamReassembler::cut_string(SetNode &node) {
+void StreamReassembler::cut_string(SetNode &node) const {
     if (node.left_point < _first_unread) {
         node.left_point = _first_unread;
     }
@@ -98,4 +102,4 @@ bool StreamReassembler::empty() const { return _unassembled_bytes == 0; }
 
 size_t StreamReassembler::first_unassembled() const { return _first_unread; }
 
-size_t StreamReassembler::first_unacceptable() const { return _first_unacceptable; }
+
