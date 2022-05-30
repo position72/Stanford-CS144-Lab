@@ -16,19 +16,19 @@ ByteStream::ByteStream(const size_t capacity) : _capacity(capacity) {}
 
 size_t ByteStream::write(const string &data) {
     size_t write_count = 0;	
-    for (size_t i = 0; i < data.size(); i++) {
+    for (char i : data) {
 	    if (_buffer_size >= _capacity) break;
-        _stream.push_back(data[i]);
-        _buffer_size++;
-        _bytes_written++;
+        _stream.push_back(i);
         write_count++;
     }
+    _buffer_size += write_count;
+    _bytes_written += write_count;
     return write_count;
 }
 
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
-    std::string res = "";
+    std::string res;
     size_t read_count = 0;
     for (auto it = _stream.begin(); it != _stream.end() && read_count < len; it++) {
         res += *it;
