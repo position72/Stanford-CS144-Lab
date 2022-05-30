@@ -8,7 +8,7 @@
 // You will need to add private members to the class declaration in `byte_stream.hh`
 
 template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
+void DUMMY_CODE(Targs &&.../* unused */) {}
 
 using namespace std;
 
@@ -16,8 +16,9 @@ ByteStream::ByteStream(const size_t capacity) : _capacity(capacity) {}
 
 size_t ByteStream::write(const string &data) {
     size_t write_count = min(data.size(), remaining_capacity());
-    for (char i : data){
-	    if (_buffer_size >= _capacity) break;
+    for (char i : data) {
+        if (_buffer_size >= _capacity)
+            break;
         _stream.push_back(i);
         _buffer_size++;
     }
@@ -55,7 +56,7 @@ std::string ByteStream::read(const size_t len) {
     return res;
 }
 
-void ByteStream::end_input() { _input_ended = true;}
+void ByteStream::end_input() { _input_ended = true; }
 
 bool ByteStream::input_ended() const { return _input_ended; }
 
