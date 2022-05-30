@@ -127,6 +127,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             send_sender_segment();
             _linger_after_streams_finish = false;
         } else if (seg.length_in_sequence_space()) {
+            // 只对非空报文响应ACK
             _sender.fill_window();
             if (_sender.segments_out().empty())
                 _sender.send_empty_segment();
@@ -141,20 +142,17 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         _sender.ack_received(seg.header().ackno, seg.header().win);
 
         if (_sender.next_seqno_absolute() == _sender.stream_in().bytes_written() + 2) {
-            //cerr << "sender fin " << &_sender << " " << seg.header().fin << endl;
             if (!_linger_after_streams_finish) {
                 // 被动方进入CLOSED状态
-               // cerr << "sender try clean " << &_sender <<  " " << _sender.bytes_in_flight() << endl;
                 try_clean_shutdown();
             } else if (seg.length_in_sequence_space()){
+                // 只对非空报文响应ACK
                 _sender.send_empty_segment();
                 send_sender_segment();
             }
         }
         return;
     }
-
-    // CLOSE_WAIT
 }
 
 bool TCPConnection::active() const { return _active; }
