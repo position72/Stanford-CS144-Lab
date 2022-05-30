@@ -37,7 +37,6 @@ void TCPSender::send_segment(TCPSegment &segment) {
 
     _bytes_in_flight += segment.length_in_sequence_space();
     _next_seqno += segment.length_in_sequence_space();
-
 }
 
 void TCPSender::fill_window() {
@@ -87,12 +86,12 @@ void TCPSender::fill_window() {
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     uint64_t abs_ackno = unwrap(ackno, _isn, _next_seqno);
 
-    uint64_t left_bound = (!_outstanding_segments_out.empty())
-        ? abs_ackno >= unwrap(_outstanding_segments_out.front().header().seqno, _isn, _next_seqno) : _next_seqno;
-    // ackno的范围应在已发送没被ack的报文段中最小和最大的seqno之间
-    if (abs_ackno >= left_bound && abs_ackno <= _next_seqno) {
+    // ackno应该小于未发送报文的编号
+    if (abs_ackno <= _next_seqno) {
         _window_size = window_size;
-
+        // 小于之前的ackno没有意义
+        if (abs_ackno < old_ackno) return;
+        old_ackno = abs_ackno;
         if (!_window_size) {
             // 当window_size等于0时，将其看作1，并且不进行指数退避(exponential backoff)
             _window_size = 1;
@@ -109,6 +108,9 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
             // 所有ackno之前的数据可认为被receiver接收到
             if (seqno + front_seg.length_in_sequence_space() > abs_ackno)
                 break;
+//            cerr << "sender: " << this << " ACKED: SYN: " << front_seg.header().syn << " ACK: " << front_seg.header().ack
+//                 << " FIN: " << front_seg.header().fin << " seqno: " << front_seg.header().seqno << " ackno: " << front_seg.header().ackno << " "
+//                 << front_seg.payload().size() << " from: " << front_seg.header().sport << " to: " << front_seg.header().dport << endl;
             if (front_seg.header().syn) {
                 _syn_acked = true;
             }
@@ -139,9 +141,8 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
         // 超时重发，重置计时器，在receiver窗口空闲将RTO翻倍，连续重发次数加1
         if (_timer_elapsed >= _retransmission_timeout) {
             _segments_out.push(_outstanding_segments_out.front());
-
+            _consecutive_retransmissions++;
             if (_back_off_RTO) {
-                _consecutive_retransmissions++;
                 _retransmission_timeout <<= 1;
             }
             _timer_elapsed = 0;
@@ -154,5 +155,6 @@ unsigned int TCPSender::consecutive_retransmissions() const { return _consecutiv
 void TCPSender::send_empty_segment() {
     TCPSegment segment;
     // 空报文不进入outstanding队列
+    segment.header().seqno = next_seqno();
     _segments_out.push(segment);
 }

@@ -67,6 +67,8 @@ private:
 
     void send_segment(TCPSegment &segment);
 
+    uint64_t old_ackno{0};
+
 public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,

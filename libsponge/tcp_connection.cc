@@ -36,6 +36,9 @@ void TCPConnection::send_sender_segment() {
             _segments_out.push(segment);
             return;
         }
+//        cerr << "sender: " << &_sender << " SEND: SYN: " << segment.header().syn << " ACK: " << segment.header().ack
+//             << " FIN: " << segment.header().fin << " seqno: " << segment.header().seqno
+//             << " ackno: " << segment.header().ackno << " " << segment.payload().size() << endl;
         _segments_out.push(segment);
         _sender.segments_out().pop();
     }
@@ -56,6 +59,10 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     if (!_active)
         return;
 
+//    cerr << "sender: " << &_sender << " RECEIVED: SYN: " << seg.header().syn << " ACK: " << seg.header().ack
+//         << " FIN: " << seg.header().fin << " seqno: " << seg.header().seqno << " ackno: " << seg.header().ackno << " "
+//         << seg.payload().size() << " from: " << seg.header().sport << " to: " << seg.header().dport << endl;
+
     _ms_since_last_received = 0;
 
     if (seg.header().rst) {
@@ -64,7 +71,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     }
 
     // LISTEN
-    if (_sender.next_seqno_absolute() == 0) {
+    if (_sender.next_seqno_absolute() == 0) {;
         if (seg.header().syn) {
             // 进行被动连接, LISTEN -> SYN_RCVD
             _receiver.segment_received(seg);
@@ -86,7 +93,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             } else {
                 // 双方同时进行主动连接请求会出现这种情况，己方作为主动方转变为被动方
                 // 由于之前发送一次SYN报文，这里只需发送空ACK报文
-                // SYN_SENT -> SYN_RCVD
+                // SYN_SENT -> SYN_RCVD;
                 _sender.send_empty_segment();
                 send_sender_segment();
             }
@@ -113,6 +120,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         _receiver.segment_received(seg);
         _sender.ack_received(seg.header().ackno, seg.header().win);
         // 被动断开连接，ESTABLISHED -> CLOSE_WAIT
+
         if (seg.header().fin) {
             // 发送空ACK报文，第二次挥手
             _sender.send_empty_segment();
@@ -133,15 +141,14 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         _sender.ack_received(seg.header().ackno, seg.header().win);
 
         if (_sender.next_seqno_absolute() == _sender.stream_in().bytes_written() + 2) {
-            if (seg.header().fin) {
-                // FIN_WAIT2 -> TIME_WAIT
-                // 发送空ACK报文，第四次挥手
+            //cerr << "sender fin " << &_sender << " " << seg.header().fin << endl;
+            if (!_linger_after_streams_finish) {
+                // 被动方进入CLOSED状态
+               // cerr << "sender try clean " << &_sender <<  " " << _sender.bytes_in_flight() << endl;
+                try_clean_shutdown();
+            } else if (seg.length_in_sequence_space()){
                 _sender.send_empty_segment();
                 send_sender_segment();
-
-            } else if (!_linger_after_streams_finish){
-                // 被动方进入CLOSED状态
-                try_clean_shutdown();
             }
         }
         return;
@@ -162,6 +169,7 @@ size_t TCPConnection::write(const string &data) {
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) {
     _ms_since_last_received += ms_since_last_tick;
+    if (!_active) return;
     _sender.tick(ms_since_last_tick);  // tell the TCPSender about the passage of time.
 
     // abort the connection, and send a reset segment to the peer (an empty segment with
@@ -177,8 +185,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 }
 
 void TCPConnection::try_clean_shutdown() {
-    if (_sender.stream_in().eof() &&  _sender.bytes_in_flight() == 0 &&
-        _receiver.stream_out().eof()) {
+    if (_sender.stream_in().eof() && _sender.bytes_in_flight() == 0 && _receiver.stream_out().eof()) {
         if (!_linger_after_streams_finish || _ms_since_last_received >= 10 * _cfg.rt_timeout) {
             _active = false;
         }
@@ -214,7 +221,6 @@ void TCPConnection::connect() {
 TCPConnection::~TCPConnection() {
     try {
         if (active()) {
-            cerr << "Warning: Unclean shutdown of TCPConnection\n";
             //  need to send a RST segment to the peer
             unclean_shutdown(true);
             _sender.send_empty_segment();
