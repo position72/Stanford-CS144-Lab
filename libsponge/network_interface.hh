@@ -67,7 +67,7 @@ class NetworkInterface {
     void arp_request();
 
     // 更新等待发送数据帧队列和等待查询IP表
-    void update_waiting_and_pending(uint32_t ip);
+    void update_waiting_and_pending();
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses

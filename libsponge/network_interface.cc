@@ -62,11 +62,11 @@ void NetworkInterface::arp_request() {
         message.sender_ethernet_address = _ethernet_address;
         message.sender_ip_address = _ip_address.ipv4_numeric();
         message.target_ethernet_address = {0, 0, 0, 0, 0, 0};
-        message.target_ip_address = it.first;
+        message.target_ip_address = it.first; // 查询的IP
 
         EthernetFrame frame;
         frame.header().src = _ethernet_address;
-        frame.header().dst = ETHERNET_BROADCAST;
+        frame.header().dst = ETHERNET_BROADCAST; //发送广播
         frame.header().type = EthernetHeader::TYPE_ARP;
         frame.payload() = message.serialize();
 
@@ -82,6 +82,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
         return nullopt;
     }
     if (frame.header().type == EthernetHeader::TYPE_IPv4) {
+        // 检查无误后向网络层传输
         InternetDatagram datagram;
         if (datagram.parse(frame.payload()) != ParseResult::NoError) {
             return nullopt;
@@ -113,13 +114,13 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 
             _frames_out.push(reply_frame);
         }
-        update_waiting_and_pending(ip);
+        _pending_arp.erase(ip);
+        update_waiting_and_pending();
     }
     return nullopt;
 }
 
-void NetworkInterface::update_waiting_and_pending(uint32_t ip) {
-    _pending_arp.erase(ip);
+void NetworkInterface::update_waiting_and_pending() {
     for (auto it = _waiting_frames_out.begin(); it != _waiting_frames_out.end();) {
         if (!_arp_table.count(it->ip) || _arp_table[it->ip].ttl <= _timer) {
             it++;
