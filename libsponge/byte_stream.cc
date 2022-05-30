@@ -15,13 +15,12 @@ using namespace std;
 ByteStream::ByteStream(const size_t capacity) : _capacity(capacity) {}
 
 size_t ByteStream::write(const string &data) {
-    size_t write_count = 0;	
-    for (char i : data) {
+    size_t write_count = min(data.size(), remaining_capacity());
+    for (char i : data){
 	    if (_buffer_size >= _capacity) break;
         _stream.push_back(i);
-        write_count++;
+        _buffer_size++;
     }
-    _buffer_size += write_count;
     _bytes_written += write_count;
     return write_count;
 }
