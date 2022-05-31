@@ -49,6 +49,21 @@ class Router {
     //! datagram's destination address.
     void route_one_datagram(InternetDatagram &dgram);
 
+    // 01-trie树，用作IP地址的最长前缀匹配，0号节点为null，1号节点为根
+    std::vector<std::vector<uint32_t>> _trie_router{{0,0}, {0,0}};
+
+    uint32_t _trie_node_count = 1;
+
+    const uint32_t _trie_root = 1;
+
+    struct router_item {
+        std::optional<Address> next_hop = std::nullopt;
+        size_t interface_num = 0;
+    };
+
+    // trie树的某个节点若存在路由表项，则加入此map
+    std::unordered_map<uint32_t, router_item> _trie_node_item{};
+
   public:
     //! Add an interface to the router
     //! \param[in] interface an already-constructed network interface
